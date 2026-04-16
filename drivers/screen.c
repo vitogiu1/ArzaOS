@@ -38,14 +38,13 @@ void scroll() {
         (MAX_ROWS - 1) * row_bytes                // Quantidade (24 linhas inteiras)
     );
 
-    // 3. Apagamos a última linha para receber o novo texto
     int last_line_offset = (MAX_ROWS - 1) * row_bytes;
     for (int i = 0; i < row_bytes; i += 2) {
         video_memory[last_line_offset + i] = ' ';
         video_memory[last_line_offset + i + 1] = WHITE_ON_BLACK;
     }
 
-    // 4. Resetamos o cursor
+    // Resetar o cursor
     cursor_row = MAX_ROWS - 1;
     cursor_col = 0;
     update_cursor();
@@ -71,7 +70,7 @@ void print_char(char character, char color) {
         cursor_col = 0;
         if(cursor_row >= MAX_ROWS) {scroll();}
         update_cursor();
-        return; //O \n não precisa ser imprimido na tela, por isso saímos da função
+        return; //O \n não precisa ser imprimido na tela
     }
 
     // Calcula a posição na "fita" de memória
@@ -82,7 +81,7 @@ void print_char(char character, char color) {
     // O segundo byte, vai para a cor (o byte seguinte)
     video_memory[offset+1] = color;
 
-    //Move o cursor uma casa para o lado
+    // Move o cursor uma casa para o lado
     cursor_col++;
 
     // Se a coluna passou do limite (80), quebra a linha automaticamente
@@ -92,14 +91,13 @@ void print_char(char character, char color) {
         update_cursor();
     }
 
-    // NOVA TRAVA DE SEGURANÇA: Se a linha passar de 24, rola a tela!
+    // Se a linha passar de 24, rola a tela!
     if (cursor_row >= MAX_ROWS) {
         scroll();
     }
     update_cursor();
 }
 
-// Mini "gambiarra" de um print: passa letra por letra no print_char
 void print(char* message, char color) {
     int i = 0;
     while (message[i] != '\0') {

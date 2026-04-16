@@ -4,6 +4,7 @@
 #include "../libc/string.h"
 #include "../cpu/isr.h"
 #include "../cpu/idt.h"
+#include "../drivers/pic.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
@@ -23,14 +24,17 @@ void isr_install() {
     set_idt_gate(13, (uint32_t)&isr13);
     set_idt_gate(14, (uint32_t)&isr14);
     set_idt_gate(31, (uint32_t)&isr31);
+    // Cadastrando Periféricos de Hardware
+    set_idt_gate(32, (uint32_t)&irq0); // Relógio
+    set_idt_gate(33, (uint32_t)&irq1); // Teclado
     
     set_idt(); // Carrega a tabela na CPU
 }
 
 // "Banco de Dados" de estado do Kernel
 int service_protected_mode = 1; // Ativado no boot da 0x9000
-int service_keyboard = 0;       // Ainda não implementado
-int service_alert = 1;         // Status de um alerta ligado
+int service_keyboard = 1;       // Implementado
+int service_alert = 0;         // Status de um alerta desligado
 
 void check_service(char* service_name, int status) {
     print("Servico: ", WHITE_ON_BLACK);
@@ -64,16 +68,16 @@ void kernel_main() {
     }
 
     isr_install(); // Instala todas as proteções
-    print("Todas as excecoes da CPU Regstradas.\n", GREEN_ON_BLACK);
+    print("Todas as Excecoes da CPU registradas.\n", GREEN_ON_BLACK);
 
-    print("\nForcando uma Divisao por Zero matematicamente...\n", WHITE_ON_BLACK);
-    
-    int a = 10;
-    int b = 0;
-    int c = a / b; // Isso vai forçar a chamada do salvaguarda
+    // Tira os periféricos da zona de perigo
+    // Mapeia o Master para a Porta 32 e o Slave para a 40
+    pic_remap(0x20, 0x28);
+    print("Chip PIC Remapeado com sucesso.\n", GREEN_ON_BLACK);
 
-    // (O sistema será paralisado pela nossa ISR, então este código abaixo não rodará)
-    print("Resultado: ", WHITE_ON_BLACK);
+    __asm__ volatile("sti");
+    print("Interrupcoes de Hardware ATIVADAS.\n", GREEN_ON_BLACK);
 
-    while(1) {} //Trava i Kernel para ele não executar mais nada
+
+    while(1) {} //Trava o Kernel para ele não executar mais nada
 }

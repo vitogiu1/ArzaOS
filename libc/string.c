@@ -1,6 +1,6 @@
 #include "string.h"
 
-// Inverte uma string (necessário para o itoa)
+// Inverte uma string 
 void reverse(char s[]) {
     int i, j;
     char c;
@@ -18,7 +18,7 @@ int strlen(char s[]) {
     return i;
 }
 
-// Converte inteiro para ASCII (nossa itoa)
+// Converte inteiro para ASCII
 void itoa(int n, char str[]) {
     int i, sign;
     if ((sign = n) < 0) n = -n; // Trata números negativos

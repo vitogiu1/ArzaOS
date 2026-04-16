@@ -3,7 +3,7 @@ section .text
 
 extern isr_handler ; A função central em C
 
-; MACRO: Cria um guarda-costas que NÃO tem código de erro
+; MACRO: Cria um salvaguardas que NÃO tem código de erro
 %macro ISR_NOERRCODE 1
   global isr%1
   isr%1:
@@ -12,7 +12,7 @@ extern isr_handler ; A função central em C
     jmp isr_common_stub
 %endmacro
 
-; MACRO: Cria um guarda-costas que já possuí código de erro da CPU
+; MACRO: Cria um salvaguardas que já possuí código de erro da CPU
 %macro ISR_ERRCODE 1
   global isr%1
   isr%1:
@@ -21,8 +21,7 @@ extern isr_handler ; A função central em C
     jmp isr_common_stub
 %endmacro
 
-; GERANDO OS 32 GUARDA-COSTAS AUTOMATICAMENTE
-; (As portas 8, 10, 11, 12, 13, 14 e 21 geram códigos de erro segundo a Intel)
+; GERANDO AS 32 SALVAGUARDAS AUTOMATICAMENTE
 ISR_NOERRCODE 0
 ISR_NOERRCODE 1
 ISR_NOERRCODE 2
@@ -70,7 +69,7 @@ isr_common_stub:
     mov fs, ax
     mov gs, ax
     
-    ; Chama o nosso Despachante em C!
+    ; Chama o despachante em C
     call isr_handler
     
     ; Restaura tudo de volta ao normal
@@ -83,3 +82,44 @@ isr_common_stub:
     
     add esp, 8      ; Limpa o Número do Erro e o Número da Interrupção da pilha
     iret            ; Destranca a CPU!
+
+; IRQs - Interrupções de Hardware (Teclado e Relógio)
+extern irq_handler
+
+; Macro para criar as portas dos periféricos
+%macro IRQ 2
+  global irq%1
+  irq%1:
+    push byte 0     ; Periféricos não mandam código de erro, então será empurrado um zero falso
+    push byte %2    ; Empurrando a Porta (Ex: 32 para o Relógio, 33 para o Teclado)
+    jmp irq_common_stub
+%endmacro
+
+; Criando os dois primeiros guarda-costas (Relógio e Teclado)
+IRQ 0, 32
+IRQ 1, 33
+
+; A Esteira de Montagem dos Periféricos
+irq_common_stub:
+    pusha           
+    
+    mov ax, ds      
+    push eax        
+    
+    mov ax, 0x10    
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    
+    call irq_handler ; Chama a função em C
+    
+    pop eax 
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    popa
+    
+    add esp, 8      
+    iret

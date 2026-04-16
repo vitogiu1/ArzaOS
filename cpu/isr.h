@@ -33,5 +33,10 @@ extern uint32_t isr12;
 extern uint32_t isr13;
 extern uint32_t isr14;
 extern uint32_t isr31;
+extern uint32_t irq0;
+extern uint32_t irq1;
+
+// O Despachante de Periféricos
+void irq_handler(registers_t r);
 
 #endif

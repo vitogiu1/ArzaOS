@@ -1,8 +1,9 @@
 #include "isr.h"
 #include "../drivers/screen.h"
 #include "../libc/string.h"
+#include "../drivers/pic.h"
 
-// Array contendo os nomes oficiais das exceções da Intel!
+// Array contendo os nomes oficiais das exceções da Intel
 char *exception_messages[] = {
     "Division By Zero",
     "Debug",
@@ -35,7 +36,7 @@ char *exception_messages[] = {
     "Reserved",
     "Reserved",
     "Reserved",
-    "Reserved" // Até a porta 31
+    "Reserved" 
 };
 
 // O DESPACHANTE CENTRAL
@@ -63,4 +64,19 @@ void isr_handler(registers_t r) {
 
     while(1);
     }
+}
+
+// O DESPACHANTE DE HARDWARE
+void irq_handler(registers_t r) {
+    // Tratamento especifico
+    // Se foi o clock da cpu (tick 18p/s)
+    if (r.int_no == 32) {} 
+    else if (r.int_no == 33) {
+        // Ou o teclado
+        print("Sinal do teclado recebido!\n", GREEN_ON_BLACK);
+    }
+
+    // Fallback
+    // Precisa retornar o número da IRQ original para o PIC (Porta - 32)
+    pic_send_eoi(r.int_no - 32);
 }

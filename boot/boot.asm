@@ -67,9 +67,9 @@ _start:
     ; O Salto Longo (Far Jump)
     ; Isso limpa a fila de leitura (pipeline) do processador e avisa
     ; para a partir de agora, a CPU usar o segmento de código de 32 bits e ir para o rótulo init_pm"
-    jmp CODE_SEG:init_pm ; Estamos dizendo para CPU usar a permissão de mexer na memória com o "crachá" CODE do GDT
+    jmp CODE_SEG:init_pm ;  informa-se à CPU para usar a permissão de mexer na memória com o "crachá" CODE do GDT
     ; Então ele vai para o init_PM com essa permissão. Sem isso, a CPU não permitiria que ele executasse a init_pm, sem "se identificar"
-    ; Pois agora estamos no modo protegido de 32 bits.
+    ; Pois agora o modo 32 bits protegido está ativo
 
 .error:
     mov si, msg_erro
@@ -97,9 +97,9 @@ print_string:
 
 init_pm:
     ; Aqui, já estamos no modo 32 bits.
-    ; A CPU acabou de ser ativada, então precisamos zerar todos os registradores antigos (DS, SS e afins)
-    ; e apontá-á-los todos para o nosso novo Segmento de DADOS (DATA_SEG) da GDT.
-    ; E aqui, salvamos todos os registradores com a permisão de DATA do GDT
+    ; A CPU acabou de ser ativada, então é necessário zerar todos os registradores antigos (DS, SS e afins)
+    ; e apontá-á-los todos para o novo Segmento de DADOS (DATA_SEG) da GDT.
+    ; E aqui, deve-se salvar todos os registradores com a permisão de DATA do GDT
     mov ax, DATA_SEG
     mov ds, ax
     mov ss, ax
@@ -112,8 +112,8 @@ init_pm:
     mov ebp, 0x90000 ; Extended Base Pointer, será o nosso ponteiro do topo. Toda vez que o kernel daqui para frente, fizer um push, um call ou criar uma variável, o ESP se move. Ele é o marcador de onde está o último dado guardado.
     mov esp, ebp ; Extended Stack Pointer É o "Ponteiro de Base". Ele é o âncora. Ele serve para o C conseguir achar suas variáveis locais. Ele marca onde a função atual começou, para que o ESP possa se mexer à vontade.
  
-    ; O nosso Kernel já foi lido do HD e está na RAM no endereço 0x9000.
-    ; Mandamos a CPU para lá!
+    ; O  Kernel já foi lido do HD e está na RAM no endereço 0x9000.
+    ; Basta mandar a CPU para lá
     jmp 0x9000      ; Executa o Kernel do Setor 2!
 
 
@@ -158,7 +158,7 @@ gdt_descriptor:
     dw gdt_end - gdt_start - 1
     dd gdt_start
 
-; Definimos as constantes com os índices (Offset dentro da tabela)
+; Definindo as constantes com os índices (Offset dentro da tabela)
 ; São constantes que mostram onde cada segmento começa
 CODE_SEG equ gdt_code - gdt_start ; CODE começa no byte 8, em hexadecimal geralmente é 0x08 
 DATA_SEG equ gdt_data - gdt_start ; DATA começa no byte 16, em hexadecimal geralmente é 0x10
@@ -170,5 +170,5 @@ DATA_SEG equ gdt_data - gdt_start ; DATA começa no byte 16, em hexadecimal gera
 ; a fórmula ($ - $$) calcula o tamanho do código que escrevemos até agora, para preencher até o fim
 times 510 - ($ - $$) db 0
 ; preenchendo os últimos dois bytes (511, 512) do bootloader, com a assinatura 0xAA55, para indicar que é o fim do bootloader
-; E que se trata de uma assinatura MBR, e que a BIOS pode ler
+; E que se trata de uma assinatura MBR, fazendo com que a BIOS possa ler
 dw 0xaa55
