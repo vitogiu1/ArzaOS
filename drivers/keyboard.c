@@ -4,7 +4,7 @@
 #include "screen.h"
 #include "../libc/string.h"
 
-// Mapeamento US-QWERTY - Scancode Set 1
+// Array Normal (Minúsculas e números)
 const char scancode_to_char[] = {
     '?', '?', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '?', '?',
     'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '?', 'a', 's',
@@ -12,17 +12,89 @@ const char scancode_to_char[] = {
     'b', 'n', 'm', ',', '.', '/', '?', '?', '?', ' '
 };
 
-// Quando a porta 33 trocar, essa função deve ser chamada
+// Array Shift (Maiúsculas e Símbolos)
+const char scancode_to_char_shift[] = {
+    '?', '?', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '?', '?',
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n', '?', 'A', 'S',
+    'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '\"', '~', '?', '|', 'Z', 'X', 'C', 'V',
+    'B', 'N', 'M', '<', '>', '?', '?', '?', '?', ' '
+};
+
+// Scancodes das Teclas Especiais (Set 1)
+#define BACKSPACE 0x0E
+#define ENTER 0x1C
+#define LEFT_SHIFT 0x2A
+#define RIGHT_SHIFT 0x36
+#define LEFT_SHIFT_RELEASE 0xAA
+#define RIGHT_SHIFT_RELEASE 0xB6
+#define CAPS_LOCK 0x3A
+
+// Variaveis de estado e buffer
+static int shift_pressed = 0;
+static int caps_lock = 0;
+
+static char key_buffer[256]; // A palavra que esta guardada
+static int buffer_index = 0; // Letras ja digitas
+
+// --- A INTELIGÊNCIA ---
 static void keyboard_callback(registers_t *r) {
-    // Esvaziamos a porta 0x60, lendo-a.
     unsigned char scancode = port_byte_in(0x60);
-    
-    // Scancodes maiores que 128 significam que a tecla foi SOLTA.
-    // É necessário imprimir na tela apenas quando a tecla for PRESSIONADA (< 128).
+
+    // Tratamento de teclas soltas
+    if (scancode == LEFT_SHIFT_RELEASE || scancode == RIGHT_SHIFT_RELEASE) {
+        shift_pressed = 0; // O usuário soltou o Shift
+        return;
+    }
+
+    // Tratamento de ações
+    if (scancode == CAPS_LOCK) {
+        caps_lock = !caps_lock; // Liga/Desliga como um interruptor
+        return;
+    } 
+    else if (scancode == LEFT_SHIFT || scancode == RIGHT_SHIFT) {
+        shift_pressed = 1; // O usuário segurou o Shift
+        return;
+    }
+    else if (scancode == BACKSPACE) {
+        if (buffer_index > 0) {
+            buffer_index--; // Remove do buffer
+            key_buffer[buffer_index] = '\0';
+            print_backspace(); // Apaga da tela física
+        }
+        return;
+    }
+    else if (scancode == ENTER) {
+        // Apenas resposta visual, ainda não se trata de um shell
+        print("\n", WHITE_ON_BLACK); // Pula linha
+        
+        print("Comando recebido: '", YELLOW_ON_BLACK);
+        print(key_buffer, YELLOW_ON_BLACK);
+        print("'\n", YELLOW_ON_BLACK);
+        
+        buffer_index = 0;
+        key_buffer[0] = '\0'; 
+        
+        print("> ", WHITE_ON_BLACK);
+        return;
+    }
+
+
+    // Tratamento de letras normais
     if (scancode <= 57) {
-        char letra = scancode_to_char[scancode];
-        char str[2] = {letra, '\0'};
-        print(str, WHITE_ON_BLACK);
+        char letra = '?';
+        if (shift_pressed || caps_lock) {
+            letra = scancode_to_char_shift[scancode];
+        } else {
+            letra = scancode_to_char[scancode];
+        }
+
+        if (buffer_index < 255) {
+            key_buffer[buffer_index] = letra;
+            buffer_index++;
+            key_buffer[buffer_index] = '\0';
+            char str[2] = {letra, '\0'};
+            print(str, WHITE_ON_BLACK);
+        }
     }
 }
 

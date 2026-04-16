@@ -83,6 +83,7 @@ void kernel_main() {
 
     init_keyboard();
     print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);
+    print("> ", WHITE_ON_BLACK);
 
 
     while(1) {} //Trava o Kernel para ele não executar mais nada

@@ -13,5 +13,8 @@
 // Apenas avisamos que essas funções existem para quem quiser importar o screen.h
 void clear_screen();
 void print(char* message, char color);
+int get_cursor_offset();
+void set_cursor_offset(int offset);
+void print_backspace();
 
 #endif

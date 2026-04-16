@@ -105,3 +105,51 @@ void print(char* message, char color) {
         i++;
     }
 }
+
+// Portas de controle da Placa de Vídeo (VGA)
+#define REG_SCREEN_CTRL 0x3d4
+#define REG_SCREEN_DATA 0x3d5
+
+// pegar a posição do cursro
+int get_cursor_offset() {
+    // Pede o byte Alto (High byte)
+    port_byte_out(REG_SCREEN_CTRL, 14);
+    int offset = port_byte_in(REG_SCREEN_DATA) << 8; 
+    
+    // Pede o byte Baixo (Low byte)
+    port_byte_out(REG_SCREEN_CTRL, 15);
+    offset += port_byte_in(REG_SCREEN_DATA);
+    
+    // O hardware retorna a posição do caractere (ex: 80). 
+    // Nós multiplicamos por 2 porque cada caractere na RAM ocupa 2 bytes (Letra + Cor).
+    return offset * 2; 
+}
+
+// Mudar a posição do cursor para o novo offset
+void set_cursor_offset(int offset) {
+    // Divide por 2 para converter de volta para a linguagem do hardware
+    offset /= 2;
+    
+    // Envia o byte Alto
+    port_byte_out(REG_SCREEN_CTRL, 14);
+    port_byte_out(REG_SCREEN_DATA, (unsigned char)(offset >> 8));
+    
+    // Envia o byte Baixo
+    port_byte_out(REG_SCREEN_CTRL, 15);
+    port_byte_out(REG_SCREEN_DATA, (unsigned char)(offset & 0xff));
+}
+
+void print_backspace() {
+    // 1. Pega a posição atual do cursor e volta 1 casa (2 bytes)
+    int offset = get_cursor_offset() - 2; 
+
+    // 2. Trava de segurança: Não deixa o cursor apagar a tela antes do primeiro pixel!
+    if (offset < 0) {
+        offset = 0;
+    }
+
+    video_memory[offset] = ' '; 
+    video_memory[offset + 1] = WHITE_ON_BLACK; 
+
+    set_cursor_offset(offset);
+}
