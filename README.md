@@ -23,5 +23,6 @@ make run
 ```
 
 2. Se deseja limpar a construção dos binários, basta utilizar:
-   ```bash
-   make clean
+```bash
+make clean
+```
