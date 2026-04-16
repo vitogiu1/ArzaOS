@@ -68,10 +68,11 @@ isr_common_stub:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
-    ; Chama o despachante em C
+
+    push esp
     call isr_handler
-    
+    add esp, 4
+
     ; Restaura tudo de volta ao normal
     pop eax 
     mov ds, ax
@@ -111,8 +112,10 @@ irq_common_stub:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
+
+    push esp 
     call irq_handler ; Chama a função em C
+    add esp, 4
     
     pop eax 
     mov ds, ax

@@ -5,6 +5,7 @@
 #include "../cpu/isr.h"
 #include "../cpu/idt.h"
 #include "../drivers/pic.h"
+#include "../drivers/keyboard.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
@@ -70,6 +71,8 @@ void kernel_main() {
     isr_install(); // Instala todas as proteções
     print("Todas as Excecoes da CPU registradas.\n", GREEN_ON_BLACK);
 
+    // Limpa a sujeira da RAM
+    isr_init_routing();
     // Tira os periféricos da zona de perigo
     // Mapeia o Master para a Porta 32 e o Slave para a 40
     pic_remap(0x20, 0x28);
@@ -77,6 +80,9 @@ void kernel_main() {
 
     __asm__ volatile("sti");
     print("Interrupcoes de Hardware ATIVADAS.\n", GREEN_ON_BLACK);
+
+    init_keyboard();
+    print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);
 
 
     while(1) {} //Trava o Kernel para ele não executar mais nada

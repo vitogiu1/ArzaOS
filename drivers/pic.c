@@ -13,24 +13,23 @@ void pic_send_eoi(unsigned char irq) {
 void pic_remap(int offset1, int offset2) {
     unsigned char a1, a2;
     
-    // Salva as "máscaras" atuais (quais portas estavam ligadas/desligadas)
-    // Usamos port_byte_in que você vai precisar criar no ports.c se ainda não tiver!
+    // Salva as máscaras atuais (quais portas estavam ligadas/desligadas)
     a1 = port_byte_in(PIC1_DATA);
     a2 = port_byte_in(PIC2_DATA);
 
-    // Passo 1 (ICW1): Acorda os dois PICs e diz "Preparem-se para reconfiguração"
+    // (ICW1): Acorda os dois PICs e diz "Preparem-se para reconfiguração"
     port_byte_out(PIC1_COMMAND, ICW1_INIT);
     port_byte_out(PIC2_COMMAND, ICW1_INIT);
 
-    // Passo 2 (ICW2): O Remapeamento! (Onde as IRQs vão morar na IDT)
+    // (ICW2): O Remapeamento! (Onde as IRQs vão morar na IDT)
     port_byte_out(PIC1_DATA, offset1); // Master vai para 32 (0x20)
     port_byte_out(PIC2_DATA, offset2); // Slave vai para 40 (0x28)
 
-    // Passo 3 (ICW3): Mostra onde eles estão conectados fisicamente (Cascata)
+    // (ICW3): Mostra onde eles estão conectados fisicamente (Cascata)
     port_byte_out(PIC1_DATA, 0x04); // Diz ao Master que o Slave está na IRQ 2
     port_byte_out(PIC2_DATA, 0x02); // Diz ao Slave sua própria identidade (2)
 
-    // Passo 4 (ICW4): Configura o modo de operação para processadores 8086/x86
+    // (ICW4): Configura o modo de operação para processadores 8086/x86
     port_byte_out(PIC1_DATA, 0x01);
     port_byte_out(PIC2_DATA, 0x01);
 

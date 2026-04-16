@@ -13,7 +13,7 @@ typedef struct {
 } registers_t;
 
 // 2. Assinatura do nosso Despachante Central
-void isr_handler(registers_t r);
+void isr_handler(registers_t *r);
 
 // 3. Cadastrando os Guarda-Costas do Assembly (As 32 Exceções da CPU)
 // (Declaramos apenas os primeiros essenciais por enquanto para manter limpo)
@@ -36,7 +36,15 @@ extern uint32_t isr31;
 extern uint32_t irq0;
 extern uint32_t irq1;
 
+void isr_init_routing();
+
 // O Despachante de Periféricos
-void irq_handler(registers_t r);
+void irq_handler(registers_t *r);
+
+// Define que 'isr_t' é um tipo de variável que guarda uma função
+typedef void (*isr_t)(registers_t*);
+
+// Função para os Drivers se cadastrarem no roteador
+void register_interrupt_handler(uint8_t n, isr_t handler);
 
 #endif
