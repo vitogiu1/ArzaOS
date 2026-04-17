@@ -26,10 +26,10 @@ boot_start:
     mov si, MSG_E820
     call print_string
 
-    mov di, 0x5004          ; Destiny Index, a listá começará em 0x5004, pois de 5000 até 5003, estará o nosso contador de linhas
-                            ; Essencial para o kernel em C saber onde termina a leitura da memória RAM
-    xor ebx, ebx            ; ebx = 0 (A BIOS exige que na primeira chamada ele seja 0)
-    xor ebp, ebp              ; bp = 0 (Vamos usar o registrador bp como nosso contador de linhas)
+    mov di, 0x8004           ; Destiny Index, a listá começará em 0x8004, pois de 8000 até 0x8003, estará o nosso contador de linhas
+                             ; Essencial para o kernel em C saber onde termina a leitura da memória RAM
+    xor ebx, ebx             ; ebx = 0 (A BIOS exige que na primeira chamada ele seja 0)
+    xor ebp, ebp             ; bp = 0 (Vamos usar o registrador bp como nosso contador de linhas)
 
 do_e820:
     mov eax, 0xe820         ; Chamando a função E820: registrar o mapa da memória RAM
@@ -42,7 +42,7 @@ do_e820:
     jne e820_end            ; Se ela não confirmou, é por que deu erro.
 
     ; Se a BIOS está aqui, é por que está tudo certo e escrever os 24 bytes com sucesso
-    add di, 24              ; Movemos o ponteiro da memória para o próximo endereço que será preenchido
+    add di, 24               ; Movemos o ponteiro da memória para o próximo endereço que será preenchido
     inc ebp                  ; Adicionamos mais um no bp, para indicar no final, quantas linhas terá
 
     test ebx,ebx            ; verifica se a BIOS zerou o ebx
@@ -50,7 +50,11 @@ do_e820:
 
 e820_end:
     ; O Loop terminou. Agora salvamos quantas linhas foram encontrada
-    mov dword [0x5000], ebp    ; Guarda a quantidade de linhas encontradas nos primeiros 4 bytes do endereço que está sendo trabalhado.
+    mov dword [0x8000], ebp    ; Guarda a quantidade de linhas encontradas nos primeiros 4 bytes do endereço que está sendo trabalhado.
+    
+    ; Zerar o ES para não falhar na leitura de disco
+    xor ax, ax
+    mov es, ax 
 
 ; ------ LER O KERNEL DO DISCO PARA A RAM ------
     ; Configurar onde a BIOS vai despejar os dados na memória RAM
@@ -132,7 +136,7 @@ init_pm:
 
 
     ; Configura a pilha de 32 bits
-    mov ebp, 0x9000
+    mov ebp, 0x90000
     mov esp, ebp
 
     ; Chamar o Kernel:

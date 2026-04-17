@@ -6,6 +6,8 @@
 #include "../cpu/idt.h"
 #include "../drivers/pic.h"
 #include "../drivers/keyboard.h"
+#include "./memory.h"
+#include "pmm.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
@@ -80,6 +82,25 @@ void kernel_main() {
 
     __asm__ volatile("sti");
     print("Interrupcoes de Hardware ATIVADAS.\n", GREEN_ON_BLACK);
+
+    read_memory_map();
+
+    pmm_init();
+
+    uint32_t bloco1 = pmm_alloc_frame();
+    uint32_t bloco2 = pmm_alloc_frame();
+
+    print("Bloco 1 alocado no endereco RAM: ", WHITE_ON_BLACK);
+    char s1[16];
+    itoa(bloco1, s1);
+    print(s1, YELLOW_ON_BLACK); 
+    print("\n", WHITE_ON_BLACK);
+
+    print("Bloco 2 alocado no endereco RAM: ", WHITE_ON_BLACK);
+    char s2[16];
+    itoa(bloco2, s2);
+    print(s2, YELLOW_ON_BLACK); 
+    print("\n", WHITE_ON_BLACK);
 
     init_keyboard();
     print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);
