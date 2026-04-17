@@ -4,7 +4,7 @@ LD = ld
 EMU = qemu-system-x86_64
 
 CFLAGS = -m32 -ffreestanding -fno-pie -fno-stack-protector
-LDFLAGS = -m elf_i386 -Ttext 0x9000 --oformat binary
+LDFLAGS = -m elf_i386 -Ttext 0x1000 --oformat binary
 
 BUILD_DIR = build
 

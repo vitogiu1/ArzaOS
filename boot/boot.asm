@@ -1,174 +1,185 @@
-[bits 16]    ; Compatibiliade com o modo real da BIOS de 16 bits
-[org 0x7c00] ; setando o endereço de memoria que o código irá iniciar 
-; Iniciaremos utilizando o endereço 0x7C00 pois é o primeiro endereço da memória ram reservado ao bootloader
+[bits 16]       ; Declarando a inicialização do modo real ao NASM (16 bits)
+[org 0x7c00]    ; Avisa para o NASM que a BIOS deve rodar esse código no endereço 0X7C00 na RAM
 
-_start:
-    ; SETUP DE SEGURANÇA
-    ; Primeiro passo é zerar todos os segmentos, para não ter risco de incompatibilidade em algumas BIOS
-    xor ax, ax ; AX = 0 (o xor compara bit a bit do, como estamos comparando o mesmo registrador, todos vão dar 00000000, pois é tudo igual)
-    mov ds, ax ; Atribui o valor 0 ao Data Segment, vindo de ax
-    mov es, ax ; Atribui 0 ao Extra Segment, vindo de ax
+; ------ INICIALIZAÇÃO DO PROCESSADOR ------
 
-    ; instrução CLD (clear direction Flag), garante que o LODSB ante para frente somando na string que utilizaremos
-    ; E não para trás.
-    cld
-
-    ; ---- LEITURA DE DISCO (int 0x13) interrução de disco
-    mov ah, 0x02            ; Função 0x02: Ler setores do disco
-    mov al, 50              ; Quantos setores ele terá que ler, 50 para ler tudo de uma vez
-
-    ; Endereçamento CHS (Cylinder 0, Head 0, Sector 2)
-    mov ch, 0               ; Cilindro 0
-    mov dh, 0               ; Cabeça 0
-    mov cl, 2               ; Setor 2 (pois o 1, é o bootloader)
-
-    mov bx, 0x9000          ; Endereço para onde vai do disco para a memória (endereço 0x9000 da memória ram)
-
-    int 0x13                ; Call da interupção de disco, para ler o disco
-
-    ; ---- TRATAMENTO DE ERROS -----
-    ; Se der erro, a BIOS avisa ligando a "Carry Flag", pois o if é o jum if carry, um bit de aviso da CPU
-    ; Naturalmente na BIOS, existe um código que controla o motor do HD
-    ; O código tenta ler o disco, se o disco gerar, a agulhar ler os dados, e os dados forem passados para a memória ram
-    ; A BIOS executa o CLC (Clear Carry Flag) antes de devolver o controle para o programa
-    ; Forçando o pino do carry a ficar em zero, fazendo com que esse jum if carry não acione
-
-    ; Agora, se o disco estiver arranhado, o setor não existir ou algo assim, a Bios executa a instrução
-    ; STC (Set Carry Flag), forçando o pino do carry ficar em 1, acionando o if
-    jc .error
-
-    cli ; Desligando as interrupções (BIOS entra em "hibernação")
-    ; Chamamos o CLI para que no modo protegido de 32 bits, a BIOS não continue com o seu relógio
-    ; que chamava a CPU 18 vezes por segundo, no modo real de 16 bits
-    ; O cli corta os fios de comunicação do mundo exterior. O computador fica temporariamente "surdo" para evitar acidentes.
+boot_start:
+    ; Zerando os segmentos de dados
+    xor ax, ax      ; Zerando o ax, comparando bit a bit dele, e retornando zero
+    mov ds, ax      ; Data Segment = 0
+    mov es, ax      ; Extra Segment = 0
+    mov ss, ax      ; Stack Segment = 0
 
 
-    ; Carregando o Global Descriptor Table (GDT)
-    lgdt [gdt_descriptor] ; Carrega (load) o GDT, que é a tabela cheia de bits do final do arquivo
-    ; o GDT contém o mapa para a CPU de arquitetura x86. usada para definir os segmentos de memória e os privilégios dela
-    ; Estabelecendo as principais regras de acesso à memória (leitura, escrita, execução) 
-    ; E os contratos do modo protegido e proteção de acesso à memória
+    ; Configura o topo da pilha em um lugar seguro (Longe do kernel)
+    mov bp, 0x9000
+    mov sp, bp      ; O ponteiro da pilha começa no topo, junto com ela
 
-    ; Acionar o registrador CR0
-    ; No fundo dos processadores da arquitetura x86, existem registradores chamados de Control Registers
-    ; (CR0, CR1, ...), Eles controlam a "anatomia" básica do chip
-    ; O bit número zero do CR0, ou seja, o ínicio de tudo, é chamado de PE (Protection Enable)
-    ; Isso serve para indicar ao processador, se o modo de proteção está ativado
+    ; Salva o número do disco que a BIOS usou para ligar o bootloader
+    ; A BIOS deixa esse número no registrador 'dl'
+    mov [BOOT_DRIVE], dl
 
-    ; Então, nós puxamos o valor de CR0 para o registrador EAX
-    mov eax, cr0
-    or eax, 0x1         ; Forçamos o primeiro bit do EAX ser 1, apenas o primeiro bit, por isso usamos o OR 
-    mov cr0, eax        ; Voltamos o novo valor de EAX para o CR0, mudando apenas o valor do primeiro bit para 1
-    ; Fazendo com que o falemos para o processador usar o modo de proteção, de 32 bits, deixando para trás o modo real de 16 bits
-    ; Vale ressaltar que, aqui só foi possível utilizra o EAX, poiso NASM injeta o byte 0x66, que ativa
-    ; o Operand-Size Override, para permitir que neste breve momento, seja possível usar o registrador de 32 bits
-    ; FAzemos isso, pois os registradores de controle do processador, só funciona na arquitetura de 32 bits.
+    mov si, MSG_BOOT
+    call print_string
 
-    ; O Salto Longo (Far Jump)
-    ; Isso limpa a fila de leitura (pipeline) do processador e avisa
-    ; para a partir de agora, a CPU usar o segmento de código de 32 bits e ir para o rótulo init_pm"
-    jmp CODE_SEG:init_pm ;  informa-se à CPU para usar a permissão de mexer na memória com o "crachá" CODE do GDT
-    ; Então ele vai para o init_PM com essa permissão. Sem isso, a CPU não permitiria que ele executasse a init_pm, sem "se identificar"
-    ; Pois agora o modo 32 bits protegido está ativo
+; ------ DETECTAR A MEMÓRIA RAM (E820) ------
+    mov si, MSG_E820
+    call print_string
 
-.error:
-    mov si, msg_erro
+    mov di, 0x5004          ; Destiny Index, a listá começará em 0x5004, pois de 5000 até 5003, estará o nosso contador de linhas
+                            ; Essencial para o kernel em C saber onde termina a leitura da memória RAM
+    xor ebx, ebx            ; ebx = 0 (A BIOS exige que na primeira chamada ele seja 0)
+    xor ebp, ebp              ; bp = 0 (Vamos usar o registrador bp como nosso contador de linhas)
+
+do_e820:
+    mov eax, 0xe820         ; Chamando a função E820: registrar o mapa da memória RAM
+    mov ecx, 24             ; tamanho do buffer, que será de 24 bytes, cada informação sobre a RAM
+    mov edx, 0x534D4150     ; A senha "SMAP" de hexadecimal para ASCII, para a BIOS ter certeza do que estamos pedindo (System Memory Address Map)
+    int 0x15                ; Interrupção da Placa mãe
+
+    jc e820_end             ; Caso tenha finalizado ou dado erro, o carry flag é 1, e a condicional é verdadeira
+    cmp eax, 0x534D4150     ; Se a BIOS confirmou o SMAP, ela registra no eax
+    jne e820_end            ; Se ela não confirmou, é por que deu erro.
+
+    ; Se a BIOS está aqui, é por que está tudo certo e escrever os 24 bytes com sucesso
+    add di, 24              ; Movemos o ponteiro da memória para o próximo endereço que será preenchido
+    inc ebp                  ; Adicionamos mais um no bp, para indicar no final, quantas linhas terá
+
+    test ebx,ebx            ; verifica se a BIOS zerou o ebx
+    jne do_e820             ; Se não, significa que ainda tem mais linhas, então tem que seguir copiando.
+
+e820_end:
+    ; O Loop terminou. Agora salvamos quantas linhas foram encontrada
+    mov dword [0x5000], ebp    ; Guarda a quantidade de linhas encontradas nos primeiros 4 bytes do endereço que está sendo trabalhado.
+
+; ------ LER O KERNEL DO DISCO PARA A RAM ------
+    ; Configurar onde a BIOS vai despejar os dados na memória RAM
+    mov si, MSG_DISK
+    call print_string
+
+    mov bx, 0x1000           ; bx = Endereço de Destino (onde o Kernel estará carregado)
+
+    ; Configurar as coordendas de Disco (CHS)
+    mov ah, 0x02             ; Função 0x02 para ler os setores do disco
+    mov al, 32               ; Quantos setores irá ler: 32 (16 kb)
+    mov ch, 0                ; Cilindro 0
+    mov dh, 0                ; Cabeça (Head) 0
+    mov cl, 2                ; Setor Inicial = 2 (o índice de contagem dos setores em x86 começa em 1)
+    mov dl, [BOOT_DRIVE]     ; O disco que será lido, que foi carregado no ínicio
+    int 0x13                 ; Acionando a interrupção da BIOS de leitura de disco
+
+    ; Verificação de Segurança
+    jc disk_error            ; Se a CArry Flag Ligar, deu falha de hardware, e o programa deve parar de executar
+    cmp al, 32               ; Confirma se a BIOS leu os 32 setores completo
+    jne disk_error           ; Se leu menos, o Kernel veio corrompido ou algo assim
+
+    ; ------ ATIVAR A LINHA A20 ------
+    ; Pede à BIOS para ligar a porta A20 (permitindo acessar além de 1MB de RAM)
+    mov si, MSG_PROT
+    call print_string
+
+    mov ax, 0x2401
+    int 0x15
+
+    jmp transition 
+
+disk_error:
+    mov si, MSG_ERROR_DISK
     call print_string
     jmp $
 
 print_string:
-    mov ah, 0x0e
-
+    pusha               ; Salva todos os registradores para não estragar nada
+    mov ah, 0x0e        ; Comando da BIOS: Modo Teletype (Escrever caractere)
 .loop:
-    lodsb           ; Puxa o [SI] para o AL e faz SI++
-    cmp al, 0       ; Verifica se o caractere que foi para AL é o zero, se for, significa que é o final da frase
-    je .done        ; Se for zero, pula para o fim do loop (break)
-
-    int 0x10        ; Se não for zero, continua rodando normalmente, e agora, lança na tela 
-                    ; o caractere, por meio do código de interrupção de vídeo da BIOS (0x10)
-    jmp .loop       ; Volta para o inicio do loop, para pegar a próxima letra
-
+    mov al, [si]        ; Pega a letra atual para onde o 'si' aponta
+    cmp al, 0           ; É o byte zero (Fim da string)?
+    je .done            ; Se sim, pula para o final
+    int 0x10            ; Imprime a letra na tela!
+    inc si              ; Avança para a próxima letra
+    jmp .loop           ; Repete o ciclo
 .done:
-    ret
+    popa                ; Restaura os registradores
+    ret                 ; Volta para onde a função foi chamada
 
-    ; Inicialização do modo protegido (32 bits)
-    ; Avisa ao NASM para gerar o código de máquina x86 para 32 bits
-    [bits 32]
 
+
+    ; ------ TRANSIÇÃO PARA 32 BITS ------
+transition: 
+    cli                      ; Clear Interrupt Flag Desliga as interrupções da BIOS
+
+    lgdt [gdt_descriptor]    ; Carrega a tabela GDT
+
+    ; Adiciona o bit 1 ao primeiro bit do registrador CR0, para indicar que entrará no modo 32 bits
+    mov eax, cr0
+    or eax, 0x01
+    mov cr0, eax
+
+    ; Far Jump: Limpa a fila de execução de 16 bits
+    ; Foçando a CPU a entrar no modo de 32 bits usando o nosso descriptor (CODE_SEG)
+    jmp CODE_SEG:init_pm
+
+[bits 32]
 init_pm:
-    ; Aqui, já estamos no modo 32 bits.
-    ; A CPU acabou de ser ativada, então é necessário zerar todos os registradores antigos (DS, SS e afins)
-    ; e apontá-á-los todos para o novo Segmento de DADOS (DATA_SEG) da GDT.
-    ; E aqui, deve-se salvar todos os registradores com a permisão de DATA do GDT
+    ; Iniciado no modo protegido (32 bits)
+    ; É necessário atualizar todos os registradores de segmentos para o DATA_SEG
     mov ax, DATA_SEG
     mov ds, ax
     mov ss, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
-    ; Mover a Pilha (Stack) de forma segura para o topo da memória livre
-    ; para ter espaço entre a pilha e o código do kernel, e nada sobreescrever
-    mov ebp, 0x90000 ; Extended Base Pointer, será o nosso ponteiro do topo. Toda vez que o kernel daqui para frente, fizer um push, um call ou criar uma variável, o ESP se move. Ele é o marcador de onde está o último dado guardado.
-    mov esp, ebp ; Extended Stack Pointer É o "Ponteiro de Base". Ele é o âncora. Ele serve para o C conseguir achar suas variáveis locais. Ele marca onde a função atual começou, para que o ESP possa se mexer à vontade.
- 
-    ; O  Kernel já foi lido do HD e está na RAM no endereço 0x9000.
-    ; Basta mandar a CPU para lá
-    jmp 0x9000      ; Executa o Kernel do Setor 2!
 
 
-; Comandos físicos para a cabeça de impressão virtual, de voltar ao inicio da linha, e pular uma linha
-; 13 é o Carriage Return (Volta para o ínicio da linha)
-; 10 é o Line Feed, desce uma linha
-; 0 é o terminador obrigatório, para indicar ao LODSB que a frase terminou
-; --- DADOS ---
-msg_ok   db "Kernel lido com sucesso!", 13, 10, 0
-msg_erro db "Falha ao ler o disco!", 13, 10, 0
+    ; Configura a pilha de 32 bits
+    mov ebp, 0x9000
+    mov esp, ebp
 
-; ------ GDT (Global Descriptor Table) -------
-gdt_start:
+    ; Chamar o Kernel:
+    call 0x1000         ; Pula para onde o kernel foi carregado
+    jmp $
+; ------ VARIÁVEIS GLOBAIS E STRINGS ------
+BOOT_DRIVE: db 0
+MSG_BOOT:       db "-> Bootloader Iniciado...", 13, 10, 0
+MSG_E820:       db "-> Mapeando Memoria RAM (E820)...", 13, 10, 0
+MSG_DISK:       db "-> Carregando Kernel do Disco...", 13, 10, 0
+MSG_PROT:       db "-> Ativando Linha A20 e Modo 32-bits...", 13, 10, 0
+MSG_ERROR_DISK: db "-> Erro identificado ao gravar do disco para a RAM....", 13, 10, 0
 
-gdt_null:       ; Primeira linha do GDT é obrigatoriamente zero
+; ------ TABELA GDT (Global Descriptor Table) ------
+
+gdt_start: 
+    ; Sempre o primeiro descritor do GDT nulo
     dd 0x0
     dd 0x0
 
-; Dando aesso de leitura e execução para os códigos, mas jamais sobreescrever
+; Descritor de código (Offset a partir do 0x08)
+gdt_code:
+    dw 0xffff           ; Limite (bits 0-15)
+    dw 0x0              ; Base (bits 0-15)
+    db 0x0              ; Base (bits 16-23)
+    db 10011010b        ; Acesso: Presente(1), Ring 0(00), Tipo Código(1), Exec/Read(10)
+    db 11001111b        ; Granularidade: 4KB(1), 32-bit(1), Limite(bits 16-19)
+    db 0x0              ; Base (bits 24-31)
 
-gdt_code:           ; Índice 0x08 - Segmento de Código (Base=0, Limite=4GB)
-    dw 0xffff       ; Limit (bits 0-15)
+gdt_data:
+    dw 0xffff       ; Limite (bits 0-15)
     dw 0x0          ; Base (bits 0-15)
     db 0x0          ; Base (bits 16-23)
-    db 10011010b    ; Permissões (1=Presente, Privilégio=00, Tipo=Código Exec/Leitura)
-    db 11001111b    ; Flags + Limite final
-    db 0x0          ; Base (bits 24-31)
-
-; Instrução de dados, podendo ser lidos e escritos, mas jamais executados
-gdt_data:           ; Índice 0x10 - Segmento de Dados (Base=0, Limite=4GB)
-    dw 0xffff       ; Limit (bits 0-15)
-    dw 0x0          ; Base (bits 0-15)
-    db 0x0          ; Base (bits 16-23)
-    db 10010010b    ; Permissões (Tipo=Dados Leitura/Escrita)
-    db 11001111b    ; Flags + Limite final
+    db 10010010b    ; Acesso: Presente(1), Ring 0(00), Tipo Dados(1), Read/Write(10)
+    db 11001111b    ; Granularidade: 4KB(1), 32-bit(1), Limite(bits 16-19)
     db 0x0          ; Base (bits 24-31)
 
 gdt_end:
-
-; Um pequeno ponteiro que diz à CPU qual o tamanho da GDT e onde ela está
+    ; Geração do GDT Descriptor, o que será enviado para a CPU
 gdt_descriptor:
-    dw gdt_end - gdt_start - 1
-    dd gdt_start
+    dw gdt_end - gdt_start - 1      ; Tamanho da GDT (16 bits), pegando do inicio até o final
+    dd gdt_start                    ; Engedeço inicial da GDT (32 bits)
 
-; Definindo as constantes com os índices (Offset dentro da tabela)
-; São constantes que mostram onde cada segmento começa
-CODE_SEG equ gdt_code - gdt_start ; CODE começa no byte 8, em hexadecimal geralmente é 0x08 
-DATA_SEG equ gdt_data - gdt_start ; DATA começa no byte 16, em hexadecimal geralmente é 0x10
+; Constantes para facilitar o far jump para 32 bits
+CODE_SEG equ gdt_code - gdt_start
+DATA_SEG equ gdt_data - gdt_start
 
-; Preenchimento
-; Para a BIOS Legacy ler, o bootloader precisa ter exatamente 512 bytes
-; para preencher o que está faltando para o bootloader, fazemos o times para preencher de bytes '0'
-; a partir da instrução 'db 0', até o número 510
-; a fórmula ($ - $$) calcula o tamanho do código que escrevemos até agora, para preencher até o fim
+; ------ FINALIZAÇÃO DO BOOTLOADER ------
 times 510 - ($ - $$) db 0
-; preenchendo os últimos dois bytes (511, 512) do bootloader, com a assinatura 0xAA55, para indicar que é o fim do bootloader
-; E que se trata de uma assinatura MBR, fazendo com que a BIOS possa ler
 dw 0xaa55
