@@ -8,9 +8,12 @@
 #include "../drivers/keyboard.h"
 #include "./memory.h"
 #include "pmm.h"
+#include "paging.h"
+#include "heap.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
+    // Portas 0 a 31: Exceções Nativas da CPU
     set_idt_gate(0, (uint32_t)&isr0);
     set_idt_gate(1, (uint32_t)&isr1);
     set_idt_gate(2, (uint32_t)&isr2);
@@ -26,10 +29,41 @@ void isr_install() {
     set_idt_gate(12, (uint32_t)&isr12);
     set_idt_gate(13, (uint32_t)&isr13);
     set_idt_gate(14, (uint32_t)&isr14);
+    set_idt_gate(15, (uint32_t)&isr15);
+    set_idt_gate(16, (uint32_t)&isr16);
+    set_idt_gate(17, (uint32_t)&isr17);
+    set_idt_gate(18, (uint32_t)&isr18);
+    set_idt_gate(19, (uint32_t)&isr19);
+    set_idt_gate(20, (uint32_t)&isr20);
+    set_idt_gate(21, (uint32_t)&isr21);
+    set_idt_gate(22, (uint32_t)&isr22);
+    set_idt_gate(23, (uint32_t)&isr23);
+    set_idt_gate(24, (uint32_t)&isr24);
+    set_idt_gate(25, (uint32_t)&isr25);
+    set_idt_gate(26, (uint32_t)&isr26);
+    set_idt_gate(27, (uint32_t)&isr27);
+    set_idt_gate(28, (uint32_t)&isr28);
+    set_idt_gate(29, (uint32_t)&isr29);
+    set_idt_gate(30, (uint32_t)&isr30);
     set_idt_gate(31, (uint32_t)&isr31);
-    // Cadastrando Periféricos de Hardware
-    set_idt_gate(32, (uint32_t)&irq0); // Relógio
-    set_idt_gate(33, (uint32_t)&irq1); // Teclado
+
+    // Portas 32 a 47: Periféricos de Hardware (IRQs)
+    set_idt_gate(32, (uint32_t)&irq0); 
+    set_idt_gate(33, (uint32_t)&irq1); 
+    set_idt_gate(34, (uint32_t)&irq2); 
+    set_idt_gate(35, (uint32_t)&irq3); 
+    set_idt_gate(36, (uint32_t)&irq4); 
+    set_idt_gate(37, (uint32_t)&irq5); 
+    set_idt_gate(38, (uint32_t)&irq6); 
+    set_idt_gate(39, (uint32_t)&irq7); 
+    set_idt_gate(40, (uint32_t)&irq8); 
+    set_idt_gate(41, (uint32_t)&irq9); 
+    set_idt_gate(42, (uint32_t)&irq10); 
+    set_idt_gate(43, (uint32_t)&irq11); 
+    set_idt_gate(44, (uint32_t)&irq12); 
+    set_idt_gate(45, (uint32_t)&irq13); 
+    set_idt_gate(46, (uint32_t)&irq14); 
+    set_idt_gate(47, (uint32_t)&irq15); 
     
     set_idt(); // Carrega a tabela na CPU
 }
@@ -87,25 +121,22 @@ void kernel_main() {
 
     pmm_init();
 
-    uint32_t bloco1 = pmm_alloc_frame();
-    uint32_t bloco2 = pmm_alloc_frame();
+    vmm_init();
 
-    print("Bloco 1 alocado no endereco RAM: ", WHITE_ON_BLACK);
-    char s1[16];
-    itoa(bloco1, s1);
-    print(s1, YELLOW_ON_BLACK); 
-    print("\n", WHITE_ON_BLACK);
+    init_kernel_heap();
 
-    print("Bloco 2 alocado no endereco RAM: ", WHITE_ON_BLACK);
-    char s2[16];
-    itoa(bloco2, s2);
-    print(s2, YELLOW_ON_BLACK); 
-    print("\n", WHITE_ON_BLACK);
+    // Vamos pedir assustadores 10.000 bytes! (Isso exigirá 3 páginas novas de RAM)
+    char *texto_gigante = (char *)kmalloc(10000);
+    
+    print("Texto Gigante alocado em: ", 0x0F);
+    char s_tg[16];
+    itoa((uint32_t)texto_gigante, s_tg);
+    print(s_tg, 0x0E);
+    print("\nO HEAP EXPANDIU COM SUCESSO!\n", 0x0A);
 
     init_keyboard();
     print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);
     print("> ", WHITE_ON_BLACK);
-
 
     while(1) {} //Trava o Kernel para ele não executar mais nada
 }

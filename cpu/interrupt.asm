@@ -96,9 +96,23 @@ extern irq_handler
     jmp irq_common_stub
 %endmacro
 
-; Criando os dois primeiros guarda-costas (Relógio e Teclado)
-IRQ 0, 32
-IRQ 1, 33
+; Criando os salva-guardas dos Periféricos de Hardware (IRQs)
+IRQ 0, 32   ; Relógio (Timer)
+IRQ 1, 33   ; Teclado
+IRQ 2, 34   ; Cascata PIC
+IRQ 3, 35   ; COM2
+IRQ 4, 36   ; COM1
+IRQ 5, 37   ; LPT2
+IRQ 6, 38   ; Disquete
+IRQ 7, 39   ; LPT1
+IRQ 8, 40   ; CMOS (Relógio em tempo real)
+IRQ 9, 41   ; Livre
+IRQ 10, 42  ; Livre
+IRQ 11, 43  ; Livre
+IRQ 12, 44  ; Mouse (Mouse PS/2)
+IRQ 13, 45  ; Coprocessador
+IRQ 14, 46  ; Disco Rígido Primário (IDE)
+IRQ 15, 47  ; Disco Rígido Secundário (IDE)
 
 ; A Esteira de Montagem dos Periféricos
 irq_common_stub:
