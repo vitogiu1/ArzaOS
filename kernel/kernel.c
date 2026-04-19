@@ -1,15 +1,17 @@
 // Estamos no modo Freestanding de C, ou seja, funções padrões e bibliotecas de Sistemas Operacionais não estão disponível
-// Como por exemplo, o stdio.h. Neste caso, a nossa função de iniciaçização, não é mais obrigatoriamente a main()
+// Como por exemplo, o stdio.h. Neste caso, a função de inicialização, não é mais obrigatoriamente a main()
 #include "../drivers/screen.h"
 #include "../libc/string.h"
 #include "../cpu/isr.h"
 #include "../cpu/idt.h"
 #include "../drivers/pic.h"
 #include "../drivers/keyboard.h"
-#include "./memory.h"
-#include "pmm.h"
-#include "paging.h"
-#include "heap.h"
+#include "../drivers/timer.h"
+#include "./memory/memory.h"
+#include "./memory/pmm.h"
+#include "./memory/paging.h"
+#include "./memory/heap.h"
+#include "../cpu/tasking/task.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
@@ -125,14 +127,10 @@ void kernel_main() {
 
     init_kernel_heap();
 
-    // Vamos pedir assustadores 10.000 bytes! (Isso exigirá 3 páginas novas de RAM)
-    char *texto_gigante = (char *)kmalloc(10000);
-    
-    print("Texto Gigante alocado em: ", 0x0F);
-    char s_tg[16];
-    itoa((uint32_t)texto_gigante, s_tg);
-    print(s_tg, 0x0E);
-    print("\nO HEAP EXPANDIU COM SUCESSO!\n", 0x0A);
+    init_timer(100);
+    init_tasking();
+
+    print("Multitarefa iniciado\n", GREEN_ON_BLACK);
 
     init_keyboard();
     print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);

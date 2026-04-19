@@ -1,6 +1,6 @@
 #include "memory.h"
-#include "../drivers/screen.h"
-#include "../libc/string.h"
+#include "../../drivers/screen.h"
+#include "../../libc/string.h"
 
 void read_memory_map() {
     // No bootloader, foi carregado o total de linhas que ele tem que ler nos primeiros 4 bytes a partir

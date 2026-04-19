@@ -1,8 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-//Nossas variáveis públicas
-
+// Variáveis públicas
 #define MAX_ROWS 25
 #define MAX_COLS 80
 #define WHITE_ON_BLACK 0x0F
@@ -13,7 +12,6 @@
 #define GRAY_ON_BLACK 0x08
 #define RED_WHITE 0X0C
 
-// Apenas avisamos que essas funções existem para quem quiser importar o screen.h
 void clear_screen();
 void print(char* message, char color);
 int get_cursor_offset();

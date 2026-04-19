@@ -8,7 +8,7 @@ LDFLAGS = -m elf_i386 -Ttext 0x1000 --oformat binary
 
 BUILD_DIR = build
 
-C_SOURCES = $(wildcard kernel/*.c drivers/*.c libc/*.c cpu/*.c)
+C_SOURCES = $(wildcard kernel/*.c kernel/memory/*.c cpu/tasking/*.c drivers/*.c libc/*.c cpu/*.c)
 
 OBJ = $(patsubst %.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
 
@@ -27,7 +27,7 @@ $(BUILD_DIR)/os-image.bin: $(BUILD_DIR)/boot/boot.bin $(BUILD_DIR)/kernel.bin
 	dd if=$(BUILD_DIR)/kernel.bin of=$@ bs=512 seek=1 conv=notrunc >/dev/null 2>&1
 	@echo "Imagem construida com sucesso!"
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/boot/kernel_entry.o $(BUILD_DIR)/cpu/interrupt.o ${OBJ}
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/boot/kernel_entry.o $(BUILD_DIR)/cpu/interrupt.o $(BUILD_DIR)/cpu/tasking/process.o ${OBJ}
 	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -e kernel_main -o $@ $^
 

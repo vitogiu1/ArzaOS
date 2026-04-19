@@ -1,7 +1,7 @@
 #include "pmm.h"
 #include "memory.h"
-#include "../drivers/screen.h"
-#include "../libc/string.h"
+#include "../../drivers/screen.h"
+#include "../../libc/string.h"
 
 // quantidade responsiva de "gavetas" de 32 bits, contendo 4kb de informação da RAM em cada bit "bitmap"
 // Rastreando a ram inteira da máquina

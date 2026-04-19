@@ -1,6 +1,6 @@
-#include "screen.h"         // O nosso próprio contrato
-#include "ports.h"          // Para usar o port_byte_out
-#include "../libc/mem.h"    // Para usar o memory_copy
+#include "screen.h"         
+#include "ports.h"         
+#include "../libc/mem.h"
 
 
 // Criando o ponteiro de 1 byte (char*) apontando para o endereço de memória da VGA (0xb8000)
@@ -14,7 +14,7 @@ void update_cursor() {
     // Calcula a posição linear por meio apenas do índice
     unsigned short position = (cursor_row * MAX_COLS) + cursor_col;
 
-    // Diz ao CRTC (Nossa porta 0x3D4) que vamos enviar o byte ALTO (Comando 14)
+    // Diz ao CRTC (A porta 0x3D4) que será enviado o byte alto (Comando 14)
     port_byte_out(0x03D4, 14);
     // Envia o Byte alto da posição (Porta 0X3D5) empurrand os bits 8 casa para frente (direita)
     port_byte_out(0x3D5, (unsigned char)(position >> 8));
@@ -30,7 +30,7 @@ void scroll() {
     // Calcualr o tamanho exato de uma linha em bytes:
     int row_bytes = MAX_COLS * 2;
 
-    // Copiamos tudo da Linha 1 em diante, e colamos por cima da Linha 0
+    // Copiar tudo da Linha 1 em diante, e colar por cima da Linha 0
     // Lógica: Copie de (video_memory + 160) e cole em (video_memory)
     memory_copy(
         (char*)(video_memory + row_bytes),        // Origem (A partir da Linha 1)

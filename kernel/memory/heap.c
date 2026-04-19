@@ -1,7 +1,7 @@
 #include "heap.h"
 #include "pmm.h"
 #include "paging.h"
-#include "../drivers/screen.h"
+#include "../../drivers/screen.h"
 
 // Onde começa o HEAP na memória virtual
 // Ele será inserido num endereço redondo e seguro: 0x1000000

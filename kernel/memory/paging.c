@@ -1,7 +1,7 @@
 #include "paging.h"
 #include "pmm.h"
-#include "../drivers/screen.h"
-#include "../libc/string.h"
+#include "../../drivers/screen.h"
+#include "../../libc/string.h"
 
 // O diretório mestre (PD)
 page_directory_t *kernel_directory;
