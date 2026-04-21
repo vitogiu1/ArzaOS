@@ -65,7 +65,7 @@ e820_end:
 
     ; Configurar as coordendas de Disco (CHS)
     mov ah, 0x02             ; Função 0x02 para ler os setores do disco
-    mov al, 32               ; Quantos setores irá ler: 32 (16 kb)
+    mov al, 45               ; Quantos setores irá ler: 45 (23 kb)
     mov ch, 0                ; Cilindro 0
     mov dh, 0                ; Cabeça (Head) 0
     mov cl, 2                ; Setor Inicial = 2 (o índice de contagem dos setores em x86 começa em 1)
@@ -74,7 +74,7 @@ e820_end:
 
     ; Verificação de Segurança
     jc disk_error            ; Se a CArry Flag Ligar, deu falha de hardware, e o programa deve parar de executar
-    cmp al, 32               ; Confirma se a BIOS leu os 32 setores completo
+    cmp al, 45               ; Confirma se a BIOS leu os 45 setores completo
     jne disk_error           ; Se leu menos, o Kernel veio corrompido ou algo assim
 
     ; ------ ATIVAR A LINHA A20 ------

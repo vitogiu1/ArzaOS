@@ -49,6 +49,9 @@ extern uint32_t isr29;
 extern uint32_t isr30;
 extern uint32_t isr31;
 
+// Syscalls
+extern uint32_t isr128;
+
 // 4. Cadastrando  os 16 Periféricos de Hardware (IRQs do chip PIC)
 // As IRQs começam na porta 32 da IDT e vão até a 47
 extern uint32_t irq0;  // 32: Relógio (Timer)

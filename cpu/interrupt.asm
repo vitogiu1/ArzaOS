@@ -8,7 +8,7 @@ extern isr_handler ; A função central em C
   global isr%1
   isr%1:
     push byte 0  ; Empilha um erro "falso" para manter a struct alinhada
-    push byte %1 ; Empilha o Número da Interrupção (Porta)
+    push dword %1 ; Empilha o Número da Interrupção (Porta)
     jmp isr_common_stub
 %endmacro
 
@@ -17,7 +17,7 @@ extern isr_handler ; A função central em C
   global isr%1
   isr%1:
     ; A CPU já empilhou o código de erro sozinha, então só basta emiplhar o Número da Porta
-    push byte %1
+    push dword %1
     jmp isr_common_stub
 %endmacro
 
@@ -54,6 +54,9 @@ ISR_NOERRCODE 28
 ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
+
+; Seguindo o padrão POSIX, a interrupção 128 (0x80) como o portão de entrada para as syscalls
+ISR_NOERRCODE 128
 
 
 ; O DESPACHANTE (A Esteira de Montagem)

@@ -12,6 +12,7 @@
 #include "./memory/paging.h"
 #include "./memory/heap.h"
 #include "../cpu/tasking/task.h"
+#include "syscall.h"
 
 // Função auxiliar para inicializar todas as portas da CPU de uma vez
 void isr_install() {
@@ -66,6 +67,11 @@ void isr_install() {
     set_idt_gate(45, (uint32_t)&irq13); 
     set_idt_gate(46, (uint32_t)&irq14); 
     set_idt_gate(47, (uint32_t)&irq15); 
+
+    // CADASTRA O PORTÃO DE SYSCALL (INT 0x80)
+    // O último parâmetro (0x8E) normalmente é o nível de privilégio. 
+    // Por agora, ficará assim. Quando o Ring 3 for configurado, isto será alterado.
+    set_idt_gate(128, (uint32_t)&isr128);
     
     set_idt(); // Carrega a tabela na CPU
 }
@@ -128,10 +134,29 @@ void kernel_main() {
     init_kernel_heap();
 
     init_timer(100);
+    init_syscalls();
     init_tasking();
 
     print("Multitarefa iniciado\n", GREEN_ON_BLACK);
 
+    char *message = "Ola mundo!";
+
+    __asm__ volatile(
+        "mov $4, %%eax \n"
+        "mov %0, %%ecx \n"
+        "int $0x80 \n"
+        : 
+        : "r"(message)
+        : "eax", "ecx"
+    );
+
+    __asm__ volatile (
+        "mov $1, %%eax \n"
+        "int $0x80 \n"
+        :
+        :
+        : "eax"
+    );
     init_keyboard();
     print("Driver de Teclado Carregado!\n", WHITE_ON_BLACK);
     print("> ", WHITE_ON_BLACK);
