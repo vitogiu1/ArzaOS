@@ -26,7 +26,7 @@ static void syscall_handler(registers_t *r) {
 }
 
 void init_syscalls() {
-    // Regista a nossa função no roteador da IDT, na porta 128 (0x80)
+    // Regista a função no roteador da IDT, na porta 128 (0x80)
     register_interrupt_handler(128, syscall_handler);
     print("Portao de Syscalls (int 0x80) Ativado.\n", 0x0A); // Verde
 }
